@@ -1,0 +1,34 @@
+resource "azurerm_resource_group" "terraform_state" {
+  name     = var.state_resource_group_name
+  location = var.location
+
+  tags = var.tags
+}
+
+resource "random_string" "storage_suffix" {
+  length  = 6
+  special = false
+  upper   = false
+}
+
+resource "azurerm_storage_account" "terraform_state" {
+  name = "${var.storage_account_prefix}${random_string.storage_suffix.result}"
+
+  resource_group_name = azurerm_resource_group.terraform_state.name
+  location            = azurerm_resource_group.terraform_state.location
+
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+
+  min_tls_version                 = "TLS1_2"
+  allow_nested_items_to_be_public = false
+  public_network_access_enabled   = true
+
+  tags = var.tags
+}
+
+resource "azurerm_storage_container" "terraform_state" {
+  name                  = "tfstate"
+  storage_account_id    = azurerm_storage_account.terraform_state.id
+  container_access_type = "private"
+}

@@ -1,0 +1,41 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+
+# Terraform secrets / local variables
+terraform/*.tfvars
+!terraform/terraform.tfvars.example
+
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo
+
+# Visual Studio
+.vs/
+
+# Docker
+docker-compose.override.yml
+
+# Kubernetes local secrets
+kubernetes/*secret*.yaml
+!kubernetes/secret.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Generated Kubernetes manifestskubernetes/rendered/
+
+github-federated-credential.json
+
+terraform/bootstrap/terraform.tfvars

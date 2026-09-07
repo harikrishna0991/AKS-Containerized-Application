@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: crud-api-service
+  namespace: crud-api
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+    service.beta.kubernetes.io/azure-load-balancer-ipv4: "__AKS_SERVICE_PRIVATE_IP__"
+spec:
+  type: LoadBalancer
+  selector:
+    app: crud-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
