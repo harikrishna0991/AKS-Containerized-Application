@@ -10,6 +10,10 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: aks-containerized-application
+  cancel-in-progress: false
+
 env:
   TF_WORKING_DIR: terraform
 
@@ -26,6 +30,28 @@ jobs:
   infrastructure:
     name: Terraform Infrastructure
     runs-on: ubuntu-latest
+
+    env:
+      TF_VAR_location: "Central India"
+      TF_VAR_name_prefix: "akscrud"
+      TF_VAR_environment: "dev"
+
+      TF_VAR_vnet_address_space: '["10.20.0.0/16"]'
+      TF_VAR_aks_subnet_address_prefix: "10.20.1.0/24"
+      TF_VAR_application_gateway_subnet_address_prefix: "10.20.2.0/24"
+      TF_VAR_private_endpoint_subnet_address_prefix: "10.20.3.0/24"
+      TF_VAR_aks_service_private_ip: "10.20.1.50"
+
+      TF_VAR_aks_system_node_count: "2"
+      TF_VAR_aks_user_node_count: "2"
+      TF_VAR_aks_vm_size: "Standard_B2s"
+      TF_VAR_aks_admin_username: "azureadmin"
+
+      TF_VAR_sql_admin_username: "sqladmin"
+      TF_VAR_sql_database_name: "CrudApiDb"
+      TF_VAR_sql_sku_name: "Basic"
+
+      TF_VAR_tags: '{"Owner":"DevOps"}'
 
     outputs:
       acr_name: ${{ steps.tfoutputs.outputs.acr_name }}
@@ -62,6 +88,7 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
           terraform init \
+            -input=false \
             -backend-config="resource_group_name=${TF_STATE_RESOURCE_GROUP}" \
             -backend-config="storage_account_name=${TF_STATE_STORAGE_ACCOUNT}" \
             -backend-config="container_name=${TF_STATE_CONTAINER}" \
@@ -71,11 +98,13 @@ jobs:
 
       - name: Terraform Format Check
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform fmt -check -recursive
+        run: |
+          terraform fmt -check -recursive
 
       - name: Terraform Validate
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform validate
+        run: |
+          terraform validate
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -88,7 +117,10 @@ jobs:
           TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
           TF_VAR_aks_ssh_public_key: ${{ secrets.AKS_SSH_PUBLIC_KEY }}
         run: |
-          terraform plan -out=akscrud.tfplan
+          terraform plan \
+            -input=false \
+            -lock-timeout=5m \
+            -out=akscrud.tfplan
 
       - name: Terraform Apply
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -101,7 +133,10 @@ jobs:
           TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
           TF_VAR_aks_ssh_public_key: ${{ secrets.AKS_SSH_PUBLIC_KEY }}
         run: |
-          terraform apply -auto-approve akscrud.tfplan
+          terraform apply \
+            -input=false \
+            -auto-approve \
+            akscrud.tfplan
 
       - name: Read Terraform Outputs
         id: tfoutputs
@@ -144,7 +179,8 @@ jobs:
 
       - name: Login to ACR
         run: |
-          az acr login --name "${{ needs.infrastructure.outputs.acr_name }}"
+          az acr login \
+            --name "${{ needs.infrastructure.outputs.acr_name }}"
 
       - name: Build Docker Image
         run: |
@@ -197,11 +233,13 @@ jobs:
 
       - name: Render Namespace
         run: |
-          cp kubernetes/namespace.yaml kubernetes/rendered/namespace.yaml
+          cp kubernetes/namespace.yaml \
+             kubernetes/rendered/namespace.yaml
 
       - name: Render ConfigMap
         run: |
-          cp kubernetes/configmap.yaml kubernetes/rendered/configmap.yaml
+          cp kubernetes/configmap.yaml \
+             kubernetes/rendered/configmap.yaml
 
       - name: Render Deployment
         run: |
@@ -250,11 +288,20 @@ jobs:
 
       - name: Apply Kubernetes Manifests
         run: |
-          kubectl apply -f kubernetes/rendered/namespace.yaml
-          kubectl apply -f kubernetes/rendered/configmap.yaml
-          kubectl apply -f kubernetes/rendered/secret.yaml
-          kubectl apply -f kubernetes/rendered/deployment.yaml
-          kubectl apply -f kubernetes/rendered/service.yaml
+          kubectl apply \
+            -f kubernetes/rendered/namespace.yaml
+
+          kubectl apply \
+            -f kubernetes/rendered/configmap.yaml
+
+          kubectl apply \
+            -f kubernetes/rendered/secret.yaml
+
+          kubectl apply \
+            -f kubernetes/rendered/deployment.yaml
+
+          kubectl apply \
+            -f kubernetes/rendered/service.yaml
 
       - name: Wait for Deployment
         run: |
@@ -295,9 +342,13 @@ jobs:
           echo "Application Gateway Public IP: ${APP_GATEWAY_PUBLIC_IP}"
 
           for i in {1..30}; do
-            if curl --fail --silent --show-error \
+            if curl \
+              --fail \
+              --silent \
+              --show-error \
               --max-time 10 \
               "http://${APP_GATEWAY_PUBLIC_IP}/api/Products"; then
+
               echo ""
               echo "Application Gateway is serving the API."
               exit 0
