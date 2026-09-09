@@ -72,3 +72,10 @@ resource "azurerm_role_assignment" "network_contributor" {
   role_definition_name = "Network Contributor"
   principal_id         = azurerm_kubernetes_cluster.this.identity[0].principal_id
 }
+
+resource "azurerm_role_assignment" "network_contributor_subnet" {
+  scope                = var.subnet_id
+  role_definition_name = "Network Contributor"
+  principal_id         = azurerm_kubernetes_cluster.this.identity[0].principal_id
+  principal_type       = "ServicePrincipal"
+}
