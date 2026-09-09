@@ -210,6 +210,15 @@
             font-weight: 600;
         }
 
+        .pod-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 5px;
+            background: #eef2ff;
+            font-weight: 600;
+            font-family: Consolas, monospace;
+        }
+
         @media (max-width: 768px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -231,6 +240,7 @@
             Add products and view products stored in Azure SQL.
         </div>
 
+        <!-- Add Product -->
         <div class="card">
             <h2>Add Product</h2>
 
@@ -268,7 +278,9 @@
                     </div>
 
                     <div>
-                        <button type="submit" class="add-btn">
+                        <button
+                            type="submit"
+                            class="add-btn">
                             Add Product
                         </button>
                     </div>
@@ -279,6 +291,7 @@
             <div id="message" class="message"></div>
         </div>
 
+        <!-- Products -->
         <div class="card">
             <h2>Products</h2>
 
@@ -303,6 +316,7 @@
             </table>
         </div>
 
+        <!-- Deployment Information -->
         <div class="card">
             <h2>Deployment Information</h2>
 
@@ -310,14 +324,18 @@
 
                 <div class="info-box">
                     <span class="info-label">Current Pod</span>
-                    <span id="podName" class="info-value">
+                    <span
+                        id="podName"
+                        class="info-value">
                         Loading...
                     </span>
                 </div>
 
                 <div class="info-box">
                     <span class="info-label">Hostname</span>
-                    <span id="hostname" class="info-value">
+                    <span
+                        id="hostname"
+                        class="info-value">
                         Loading...
                     </span>
                 </div>
@@ -338,17 +356,21 @@
 
             </div>
 
-            <div id="podStatus" class="status">
+            <div
+                id="podStatus"
+                class="status">
                 Checking pod...
             </div>
         </div>
 
+        <!-- Load Balancing Test -->
         <div class="card">
             <h2>Load Balancing Test</h2>
 
             <div class="subtitle">
-                Send multiple requests through the application
-                and identify which AKS pod handles each request.
+                Send multiple independent requests through
+                Application Gateway and identify which AKS
+                pod handles each request.
             </div>
 
             <button
@@ -358,15 +380,23 @@
                 Test Load Balancing
             </button>
 
-            <div id="loadBalanceSummary" class="test-results"></div>
+            <div
+                id="loadBalanceSummary"
+                class="test-results">
+            </div>
         </div>
 
     </div>
 
     <script>
-        const form = document.getElementById("productForm");
-        const message = document.getElementById("message");
-        const productsBody = document.getElementById("productsBody");
+        const form =
+            document.getElementById("productForm");
+
+        const message =
+            document.getElementById("message");
+
+        const productsBody =
+            document.getElementById("productsBody");
 
         const podNameElement =
             document.getElementById("podName");
@@ -381,14 +411,23 @@
             document.getElementById("loadBalanceBtn");
 
         const loadBalanceSummary =
-            document.getElementById("loadBalanceSummary");
+            document.getElementById(
+                "loadBalanceSummary"
+            );
+
+        // -------------------------------------------------
+        // Products
+        // -------------------------------------------------
 
         async function loadProducts() {
             try {
                 const response =
-                    await fetch("/api/Products", {
-                        cache: "no-store"
-                    });
+                    await fetch(
+                        "/api/Products",
+                        {
+                            cache: "no-store"
+                        }
+                    );
 
                 if (!response.ok) {
                     throw new Error(
@@ -402,9 +441,12 @@
                 productsBody.innerHTML = "";
 
                 if (products.length === 0) {
+
                     productsBody.innerHTML = `
                         <tr>
-                            <td colspan="5" class="empty">
+                            <td
+                                colspan="5"
+                                class="empty">
                                 No products found.
                             </td>
                         </tr>
@@ -414,18 +456,29 @@
                 }
 
                 products.forEach(product => {
+
                     const row =
                         document.createElement("tr");
 
                     row.innerHTML = `
                         <td>${product.id}</td>
-                        <td>${escapeHtml(product.name)}</td>
-                        <td>${Number(product.price).toFixed(2)}</td>
-                        <td>${product.quantity}</td>
+                        <td>
+                            ${escapeHtml(product.name)}
+                        </td>
+                        <td>
+                            ${Number(
+                                product.price
+                            ).toFixed(2)}
+                        </td>
+                        <td>
+                            ${product.quantity}
+                        </td>
                         <td>
                             <button
                                 class="delete-btn"
-                                onclick="deleteProduct(${product.id})">
+                                onclick="deleteProduct(
+                                    ${product.id}
+                                )">
                                 Delete
                             </button>
                         </td>
@@ -436,9 +489,16 @@
 
             } catch (error) {
 
+                console.error(
+                    "Failed to load products:",
+                    error
+                );
+
                 productsBody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="empty">
+                        <td
+                            colspan="5"
+                            class="empty">
                             Unable to load products.
                         </td>
                     </tr>
@@ -450,6 +510,10 @@
                 );
             }
         }
+
+        // -------------------------------------------------
+        // Pod Information
+        // -------------------------------------------------
 
         async function loadPodInfo() {
             try {
@@ -464,15 +528,20 @@
 
                 if (!response.ok) {
                     throw new Error(
-                        "HTTP " + response.status
+                        "HTTP " +
+                        response.status
                     );
                 }
 
                 const data =
                     await response.json();
 
-                podNameElement.textContent =
-                    data.podName || "Unknown";
+                podNameElement.innerHTML =
+                    '<span class="pod-badge">' +
+                    escapeHtml(
+                        data.podName || "Unknown"
+                    ) +
+                    "</span>";
 
                 hostnameElement.textContent =
                     data.hostname || "Unknown";
@@ -504,71 +573,102 @@
             }
         }
 
+        // -------------------------------------------------
+        // Load Balancing Test
+        // -------------------------------------------------
+
         async function testLoadBalancing() {
 
             loadBalanceButton.disabled = true;
+
             loadBalanceButton.textContent =
                 "Testing...";
 
             loadBalanceSummary.innerHTML = `
                 <div class="test-summary">
-                    Sending requests...
+                    Sending 10 independent requests...
                 </div>
             `;
 
-            const results = [];
-            const podCounts = {};
+            const requests = [];
 
             for (let i = 1; i <= 10; i++) {
 
-                try {
+                const requestNumber = i;
 
-                    const url =
-                        "/api/instance?request=" +
-                        i +
-                        "&ts=" +
-                        Date.now() +
-                        "-" +
-                        i;
+                const url =
+                    "/api/instance" +
+                    "?request=" +
+                    requestNumber +
+                    "&ts=" +
+                    Date.now() +
+                    "-" +
+                    Math.random();
 
-                    const response =
-                        await fetch(
-                            url,
-                            {
-                                cache: "no-store"
+                const request =
+                    fetch(
+                        url,
+                        {
+                            method: "GET",
+                            cache: "no-store",
+                            headers: {
+                                "Cache-Control":
+                                    "no-cache"
                             }
-                        );
+                        }
+                    )
+                    .then(async response => {
 
-                    if (!response.ok) {
-                        throw new Error(
-                            "HTTP " + response.status
-                        );
-                    }
+                        if (!response.ok) {
+                            throw new Error(
+                                "HTTP " +
+                                response.status
+                            );
+                        }
 
-                    const data =
-                        await response.json();
+                        const data =
+                            await response.json();
 
-                    const pod =
-                        data.podName || "Unknown";
+                        return {
+                            request:
+                                requestNumber,
+                            pod:
+                                data.podName ||
+                                "Unknown"
+                        };
+                    })
+                    .catch(error => {
 
-                    results.push({
-                        request: i,
-                        pod: pod
+                        return {
+                            request:
+                                requestNumber,
+                            pod:
+                                "Error: " +
+                                error.message
+                        };
                     });
 
-                    podCounts[pod] =
-                        (podCounts[pod] || 0) + 1;
-
-                } catch (error) {
-
-                    results.push({
-                        request: i,
-                        pod:
-                            "Error: " +
-                            error.message
-                    });
-                }
+                requests.push(request);
             }
+
+            const results =
+                await Promise.all(requests);
+
+            const podCounts = {};
+
+            results.forEach(result => {
+
+                if (
+                    !result.pod.startsWith(
+                        "Error:"
+                    )
+                ) {
+
+                    podCounts[result.pod] =
+                        (podCounts[result.pod] || 0)
+                        + 1;
+                }
+            });
 
             let html = `
                 <div class="test-summary">
@@ -580,7 +680,8 @@
 
                 html += `
                     <div class="test-result">
-                        Request ${result.request}
+                        Request
+                        ${result.request}
                         &rarr;
                         ${escapeHtml(result.pod)}
                     </div>
@@ -591,8 +692,9 @@
                 Object.keys(podCounts);
 
             html += `
-                <div class="test-summary"
-                     style="margin-top: 16px;">
+                <div
+                    class="test-summary"
+                    style="margin-top: 16px;">
                     Pods that handled requests:
                     ${pods.length}
                 </div>
@@ -610,6 +712,30 @@
                 `;
             });
 
+            if (pods.length >= 2) {
+
+                html += `
+                    <div
+                        class="status success"
+                        style="margin-top: 12px;">
+                        Load balancing confirmed:
+                        multiple AKS pods handled the requests.
+                    </div>
+                `;
+
+            } else if (pods.length === 1) {
+
+                html += `
+                    <div
+                        class="status"
+                        style="margin-top: 12px;">
+                        One pod handled this test batch.
+                        This does not prove that the
+                        Kubernetes LoadBalancer is broken.
+                    </div>
+                `;
+            }
+
             loadBalanceSummary.innerHTML =
                 html;
 
@@ -619,6 +745,10 @@
             loadBalanceButton.textContent =
                 "Test Load Balancing";
         }
+
+        // -------------------------------------------------
+        // Add Product
+        // -------------------------------------------------
 
         form.addEventListener(
             "submit",
@@ -697,11 +827,17 @@
             }
         );
 
+        // -------------------------------------------------
+        // Delete Product
+        // -------------------------------------------------
+
         async function deleteProduct(id) {
 
-            if (!confirm(
-                "Delete this product?"
-            )) {
+            if (
+                !confirm(
+                    "Delete this product?"
+                )
+            ) {
                 return;
             }
 
@@ -742,7 +878,14 @@
             }
         }
 
-        function showMessage(text, isError) {
+        // -------------------------------------------------
+        // Utility Functions
+        // -------------------------------------------------
+
+        function showMessage(
+            text,
+            isError
+        ) {
 
             message.textContent = text;
 
@@ -762,7 +905,12 @@
             return div.innerHTML;
         }
 
+        // -------------------------------------------------
+        // Startup
+        // -------------------------------------------------
+
         loadProducts();
+
         loadPodInfo();
 
         setInterval(
