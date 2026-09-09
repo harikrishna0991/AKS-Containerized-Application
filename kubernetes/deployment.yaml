@@ -3,17 +3,22 @@ kind: Deployment
 metadata:
   name: crud-api
   namespace: crud-api
+
 spec:
-  replicas: 3
+  replicas: 2
+
   strategy:
     type: RollingUpdate
+
   selector:
     matchLabels:
       app: crud-api
+
   template:
     metadata:
       labels:
         app: crud-api
+
     spec:
       containers:
         - name: crud-api
@@ -24,9 +29,16 @@ spec:
             - containerPort: 8080
               protocol: TCP
 
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+
           envFrom:
             - configMapRef:
                 name: crud-api-config
+
             - secretRef:
                 name: crud-api-secret
 
@@ -34,6 +46,7 @@ spec:
             requests:
               cpu: "100m"
               memory: "128Mi"
+
             limits:
               cpu: "500m"
               memory: "512Mi"
@@ -42,6 +55,7 @@ spec:
             httpGet:
               path: /api/Products
               port: 8080
+
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 5
@@ -51,6 +65,7 @@ spec:
             httpGet:
               path: /swagger/index.html
               port: 8080
+
             initialDelaySeconds: 30
             periodSeconds: 20
             timeoutSeconds: 5

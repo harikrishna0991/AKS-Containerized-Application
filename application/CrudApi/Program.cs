@@ -27,6 +27,21 @@ app.UseStaticFiles();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UseAuthorization();
+
 app.MapControllers();
+
+app.MapGet("/api/instance", () =>
+{
+    var podName = Environment.GetEnvironmentVariable("POD_NAME")
+                  ?? Environment.MachineName;
+
+    return Results.Ok(new
+    {
+        podName,
+        hostname = Environment.MachineName,
+        timestamp = DateTime.UtcNow
+    });
+});
 
 app.Run();

@@ -330,8 +330,8 @@ jobs:
 
           echo "Ready replicas: ${READY}"
 
-          if [ "${READY}" != "3" ]; then
-            echo "Expected 3 ready replicas."
+          if [ "${READY}" != "2" ]; then
+            echo "Expected 2 ready replicas."
             exit 1
           fi
 
