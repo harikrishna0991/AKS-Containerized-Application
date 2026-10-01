@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: crud-api-service
+  annotations:
+    {{- toYaml .Values.service.annotations | nindent 4 }}
+  labels:
+    app: crud-api
+    {{- include "crud-api.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app: crud-api
+  ports:
+    - name: http
+      protocol: TCP
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}

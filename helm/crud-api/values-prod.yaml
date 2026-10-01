@@ -1,0 +1,5 @@
+replicaCount: 2
+
+config:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  ASPNETCORE_HTTP_PORTS: "8080"
