@@ -1,4 +1,4 @@
-name: AKS Containerized Application CI/CD
+﻿name: AKS Containerized Application CI/CD
 
 on:
   push:
@@ -16,43 +16,19 @@ concurrency:
 
 env:
   TF_WORKING_DIR: terraform
-
-  TF_STATE_RESOURCE_GROUP: rg-akscrud-tfstate
-  TF_STATE_STORAGE_ACCOUNT: tfstateakscrudjwwmdy
+  TF_STATE_RESOURCE_GROUP: rg-akscrud-tfstate-new
+  TF_STATE_STORAGE_ACCOUNT: tfstateakshelm8l19hm
   TF_STATE_CONTAINER: tfstate
   TF_STATE_KEY: aks-containerized-application.tfstate
-
   IMAGE_NAME: crud-api
   K8S_NAMESPACE: crud-api
+  HELM_RELEASE_NAME: crud-api
+  HELM_CHART_PATH: ./helm/crud-api
 
 jobs:
-
   infrastructure:
     name: Terraform Infrastructure
     runs-on: ubuntu-latest
-
-    env:
-      TF_VAR_location: "Central India"
-      TF_VAR_name_prefix: "akscrud"
-      TF_VAR_environment: "dev"
-
-      TF_VAR_vnet_address_space: '["10.20.0.0/16"]'
-      TF_VAR_aks_subnet_address_prefix: "10.20.1.0/24"
-      TF_VAR_application_gateway_subnet_address_prefix: "10.20.2.0/24"
-      TF_VAR_private_endpoint_subnet_address_prefix: "10.20.3.0/24"
-      TF_VAR_aks_service_private_ip: "10.20.1.50"
-
-      TF_VAR_aks_system_node_count: "2"
-      TF_VAR_aks_user_node_count: "0"
-      TF_VAR_aks_vm_size: "Standard_E4bds_v5"
-      TF_VAR_aks_admin_username: "azureadmin"
-
-      TF_VAR_sql_admin_username: "sqladmin"
-      TF_VAR_sql_database_name: "CrudApiDb"
-      TF_VAR_sql_sku_name: "Basic"
-
-      TF_VAR_tags: '{"Owner":"DevOps"}'
-
     outputs:
       acr_name: ${{ steps.tfoutputs.outputs.acr_name }}
       acr_login_server: ${{ steps.tfoutputs.outputs.acr_login_server }}
@@ -62,14 +38,12 @@ jobs:
       sql_database_name: ${{ steps.tfoutputs.outputs.sql_database_name }}
       aks_service_private_ip: ${{ steps.tfoutputs.outputs.aks_service_private_ip }}
       app_gateway_public_ip: ${{ steps.tfoutputs.outputs.app_gateway_public_ip }}
-
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -88,7 +62,6 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
           terraform init \
-            -input=false \
             -backend-config="resource_group_name=${TF_STATE_RESOURCE_GROUP}" \
             -backend-config="storage_account_name=${TF_STATE_STORAGE_ACCOUNT}" \
             -backend-config="container_name=${TF_STATE_CONTAINER}" \
@@ -98,13 +71,11 @@ jobs:
 
       - name: Terraform Format Check
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: |
-          terraform fmt -check -recursive
+        run: terraform fmt -check -recursive
 
       - name: Terraform Validate
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: |
-          terraform validate
+        run: terraform validate
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -116,11 +87,7 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
           TF_VAR_aks_ssh_public_key: ${{ secrets.AKS_SSH_PUBLIC_KEY }}
-        run: |
-          terraform plan \
-            -input=false \
-            -lock-timeout=5m \
-            -out=akscrud.tfplan
+        run: terraform plan -out=akscrud.tfplan
 
       - name: Terraform Apply
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -132,11 +99,7 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
           TF_VAR_aks_ssh_public_key: ${{ secrets.AKS_SSH_PUBLIC_KEY }}
-        run: |
-          terraform apply \
-            -input=false \
-            -auto-approve \
-            akscrud.tfplan
+        run: terraform apply -auto-approve akscrud.tfplan
 
       - name: Read Terraform Outputs
         id: tfoutputs
@@ -161,26 +124,21 @@ jobs:
     name: Build and Push Docker Image
     needs: infrastructure
     runs-on: ubuntu-latest
-
     outputs:
       image: ${{ steps.image.outputs.image }}
-
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Login to ACR
-        run: |
-          az acr login \
-            --name "${{ needs.infrastructure.outputs.acr_name }}"
+        run: az acr login --name "${{ needs.infrastructure.outputs.acr_name }}"
 
       - name: Build Docker Image
         run: |
@@ -189,29 +147,24 @@ jobs:
             -f ./docker/Dockerfile .
 
       - name: Push Docker Image
-        run: |
-          docker push \
-            "${{ needs.infrastructure.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        run: docker push "${{ needs.infrastructure.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
 
       - name: Export Image Reference
         id: image
-        run: |
-          echo "image=${{ needs.infrastructure.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+        run: echo "image=${{ needs.infrastructure.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
   deploy:
-    name: Deploy to AKS
+    name: Deploy to AKS with Helm
     needs:
       - infrastructure
       - build
     runs-on: ubuntu-latest
-
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -220,6 +173,14 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
 
+      - name: Setup Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.18.4
+
+      - name: Validate Helm Chart
+        run: helm lint "${HELM_CHART_PATH}"
+
       - name: Get AKS Credentials
         run: |
           az aks get-credentials \
@@ -227,81 +188,44 @@ jobs:
             --name "${{ needs.infrastructure.outputs.aks_name }}" \
             --overwrite-existing
 
-      - name: Create Rendered Kubernetes Directory
+      - name: Create Kubernetes Namespace
         run: |
-          mkdir -p kubernetes/rendered
+          kubectl create namespace "${K8S_NAMESPACE}" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Render Namespace
-        run: |
-          cp kubernetes/namespace.yaml \
-             kubernetes/rendered/namespace.yaml
-
-      - name: Render ConfigMap
-        run: |
-          cp kubernetes/configmap.yaml \
-             kubernetes/rendered/configmap.yaml
-
-      - name: Render Deployment
-        run: |
-          sed \
-            -e "s|__ACR_LOGIN_SERVER__|${{ needs.infrastructure.outputs.acr_login_server }}|g" \
-            -e "s|__IMAGE_TAG__|${{ github.sha }}|g" \
-            kubernetes/deployment.yaml \
-            > kubernetes/rendered/deployment.yaml
-
-      - name: Render Service
-        run: |
-          sed \
-            -e "s|__AKS_SERVICE_PRIVATE_IP__|${{ needs.infrastructure.outputs.aks_service_private_ip }}|g" \
-            kubernetes/service.yaml \
-            > kubernetes/rendered/service.yaml
-
-      - name: Render SQL Secret
+      - name: Create SQL Connection Secret
         env:
           SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
           SQL_SERVER_FQDN: ${{ needs.infrastructure.outputs.sql_server_fqdn }}
           SQL_DATABASE_NAME: ${{ needs.infrastructure.outputs.sql_database_name }}
         run: |
-          python - <<'PY'
-          import os
-          from pathlib import Path
+          CONNECTION_STRING="Server=tcp:${SQL_SERVER_FQDN},1433;Initial Catalog=${SQL_DATABASE_NAME};User ID=sqladmin;Password=${SQL_ADMIN_PASSWORD};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
 
-          template = Path("kubernetes/secret.yaml").read_text()
+          kubectl create secret generic crud-api-secret \
+            --namespace "${K8S_NAMESPACE}" \
+            --from-literal="ConnectionStrings__DefaultConnection=${CONNECTION_STRING}" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-          connection_string = (
-              f"Server=tcp:{os.environ['SQL_SERVER_FQDN']},1433;"
-              f"Initial Catalog={os.environ['SQL_DATABASE_NAME']};"
-              f"User ID=sqladmin;"
-              f"Password={os.environ['SQL_ADMIN_PASSWORD']};"
-              f"Encrypt=True;"
-              f"TrustServerCertificate=False;"
-              f"Connection Timeout=30;"
-          )
+          unset CONNECTION_STRING
 
-          rendered = template.replace(
-              "__CONNECTION_STRING__",
-              connection_string
-          )
-
-          Path("kubernetes/rendered/secret.yaml").write_text(rendered)
-          PY
-
-      - name: Apply Kubernetes Manifests
+      - name: Render Helm Templates
         run: |
-          kubectl apply \
-            -f kubernetes/rendered/namespace.yaml
+          helm template "${HELM_RELEASE_NAME}" "${HELM_CHART_PATH}" \
+            --namespace "${K8S_NAMESPACE}" \
+            --set-string "image.repository=${{ needs.infrastructure.outputs.acr_login_server }}/${IMAGE_NAME}" \
+            --set-string "image.tag=${{ github.sha }}" \
+            > /tmp/crud-api-rendered.yaml
 
-          kubectl apply \
-            -f kubernetes/rendered/configmap.yaml
-
-          kubectl apply \
-            -f kubernetes/rendered/secret.yaml
-
-          kubectl apply \
-            -f kubernetes/rendered/deployment.yaml
-
-          kubectl apply \
-            -f kubernetes/rendered/service.yaml
+      - name: Deploy Helm Release
+        run: |
+          helm upgrade --install "${HELM_RELEASE_NAME}" "${HELM_CHART_PATH}" \
+            --namespace "${K8S_NAMESPACE}" \
+            --create-namespace \
+            --set-string "image.repository=${{ needs.infrastructure.outputs.acr_login_server }}/${IMAGE_NAME}" \
+            --set-string "image.tag=${{ github.sha }}" \
+            --wait \
+            --timeout 10m \
+            --atomic
 
       - name: Wait for Deployment
         run: |
@@ -310,30 +234,50 @@ jobs:
             --namespace "${K8S_NAMESPACE}" \
             --timeout=10m
 
-      - name: Verify Pods
-        run: |
-          kubectl get pods \
-            --namespace "${K8S_NAMESPACE}" \
-            -o wide
-
-      - name: Verify Service
-        run: |
-          kubectl get service crud-api-service \
-            --namespace "${K8S_NAMESPACE}" \
-            -o wide
-
       - name: Verify Replica Count
         run: |
-          READY=$(kubectl get deployment crud-api \
-            --namespace "${K8S_NAMESPACE}" \
-            -o jsonpath='{.status.readyReplicas}')
+          DESIRED=$(kubectl get deployment crud-api --namespace "${K8S_NAMESPACE}" -o jsonpath='{.spec.replicas}')
+          READY=$(kubectl get deployment crud-api --namespace "${K8S_NAMESPACE}" -o jsonpath='{.status.readyReplicas}')
 
+          echo "Desired replicas: ${DESIRED}"
           echo "Ready replicas: ${READY}"
 
-          if [ "${READY}" != "2" ]; then
-            echo "Expected 2 ready replicas."
+          if [ -z "${READY}" ] || [ "${READY}" != "${DESIRED}" ]; then
+            echo "Replica verification failed."
             exit 1
           fi
+
+      - name: Wait for Internal LoadBalancer
+        env:
+          EXPECTED_SERVICE_IP: ${{ needs.infrastructure.outputs.aks_service_private_ip }}
+        run: |
+          for i in {1..30}; do
+            SERVICE_IP=$(kubectl get service crud-api-service \
+              --namespace "${K8S_NAMESPACE}" \
+              -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+
+            echo "Service IP: ${SERVICE_IP}"
+
+            if [ "${SERVICE_IP}" = "${EXPECTED_SERVICE_IP}" ]; then
+              echo "Internal LoadBalancer is ready."
+              exit 0
+            fi
+
+            echo "Waiting for internal LoadBalancer. Attempt ${i}/30."
+            sleep 10
+          done
+
+          echo "Internal LoadBalancer did not receive the expected IP."
+          exit 1
+
+      - name: Verify Pods
+        run: kubectl get pods --namespace "${K8S_NAMESPACE}" -o wide
+
+      - name: Verify Service
+        run: kubectl get service crud-api-service --namespace "${K8S_NAMESPACE}" -o wide
+
+      - name: Verify Helm Release
+        run: helm status "${HELM_RELEASE_NAME}" --namespace "${K8S_NAMESPACE}"
 
       - name: Verify Application Gateway
         env:
@@ -342,13 +286,9 @@ jobs:
           echo "Application Gateway Public IP: ${APP_GATEWAY_PUBLIC_IP}"
 
           for i in {1..30}; do
-            if curl \
-              --fail \
-              --silent \
-              --show-error \
+            if curl --fail --silent --show-error \
               --max-time 10 \
               "http://${APP_GATEWAY_PUBLIC_IP}/api/Products"; then
-
               echo ""
               echo "Application Gateway is serving the API."
               exit 0
@@ -377,3 +317,6 @@ jobs:
           echo ""
           echo "Application Gateway:"
           echo "${{ needs.infrastructure.outputs.app_gateway_public_ip }}"
+          echo ""
+          echo "Helm Release:"
+          echo "${HELM_RELEASE_NAME}"
