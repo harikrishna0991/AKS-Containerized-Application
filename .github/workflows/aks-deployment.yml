@@ -20,6 +20,7 @@ env:
   TF_STATE_STORAGE_ACCOUNT: tfstateakshelm8l19hm
   TF_STATE_CONTAINER: tfstate
   TF_STATE_KEY: aks-containerized-application.tfstate
+  TF_VAR_aks_service_private_ip: "10.20.1.50"
   IMAGE_NAME: crud-api
   K8S_NAMESPACE: crud-api
   HELM_RELEASE_NAME: crud-api
@@ -87,7 +88,7 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
           TF_VAR_aks_ssh_public_key: ${{ secrets.AKS_SSH_PUBLIC_KEY }}
-        run: terraform plan -out=akscrud.tfplan
+        run: terraform plan -input=false -out=akscrud.tfplan
 
       - name: Terraform Apply
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -99,7 +100,7 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
           TF_VAR_aks_ssh_public_key: ${{ secrets.AKS_SSH_PUBLIC_KEY }}
-        run: terraform apply -auto-approve akscrud.tfplan
+        run: terraform apply -input=false -auto-approve akscrud.tfplan
 
       - name: Read Terraform Outputs
         id: tfoutputs
