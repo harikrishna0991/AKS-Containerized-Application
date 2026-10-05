@@ -17,7 +17,7 @@ concurrency:
 env:
   TF_WORKING_DIR: terraform
   TF_STATE_RESOURCE_GROUP: rg-akscrud-tfstate-new
-  TF_STATE_STORAGE_ACCOUNT: tfstateakshelm8l19hm
+  TF_STATE_STORAGE_ACCOUNT: tfstateakshelm4gwig1
   TF_STATE_CONTAINER: tfstate
   TF_STATE_KEY: aks-containerized-application.tfstate
   TF_VAR_aks_service_private_ip: "10.20.1.50"
