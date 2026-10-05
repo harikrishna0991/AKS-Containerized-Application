@@ -16,7 +16,7 @@ private_endpoint_subnet_address_prefix = "10.20.3.0/24"
 aks_service_private_ip = "10.20.1.50"
 
 aks_system_node_count = 2
-aks_user_node_count   = 2
+aks_user_node_count   = 0
 
 aks_vm_size = "Standard_B2s_v2"
 
