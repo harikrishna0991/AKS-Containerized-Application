@@ -18,6 +18,18 @@ resource "azurerm_subnet" "application_gateway" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
   address_prefixes     = [var.application_gateway_subnet_address_prefix]
+
+  delegation {
+    name = "appgateway-delegation"
+
+    service_delegation {
+      name = "Microsoft.Network/applicationGateways"
+
+      actions = [
+        "Microsoft.Network/virtualNetworks/subnets/join/action"
+      ]
+    }
+  }
 }
 
 resource "azurerm_subnet" "private_endpoint" {
